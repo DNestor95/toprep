@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import DashboardLayout from '@/components/DashboardLayout'
 import KPICards from '@/components/KPICards'
 import RecentActivities from '@/components/RecentActivities'
+import PacingTracker from '@/components/PacingTracker'
+import DailyGoals from '@/components/DailyGoals'
 
 export default async function Dashboard() {
   const supabase = createClient()
@@ -38,6 +40,30 @@ export default async function Dashboard() {
     .order('created_at', { ascending: false })
 
   console.log('Deals fetch result:', { dealsCount: deals?.length, dealsError })
+
+  // Fetch user's activities for pacing tracker
+  const { data: activities, error: activitiesError } = await supabase
+    .from('activities')
+    .select(`
+      id,
+      deal_id,
+      activity_type,
+      description,
+      scheduled_at,
+      completed_at,
+      sales_rep_id
+    `)
+    .order('completed_at', { ascending: false })
+
+  console.log('Activities fetch result:', { activitiesCount: activities?.length, activitiesError })
+
+  // Filter activities based on user role
+  let userActivities = activities || []
+  if (profile?.role === 'sales_rep') {
+    userActivities = activities?.filter(activity => activity.sales_rep_id === session.user.id) || []
+  }
+
+  console.log('Filtered activities for user:', userActivities.length)
 
   // Filter deals based on user role (since RLS might be having issues)
   let userDeals = deals || []
@@ -103,26 +129,56 @@ export default async function Dashboard() {
           totalPipeline={userDeals.filter(d => !['closed_won', 'closed_lost'].includes(d.status)).length || 0}
         />
 
+        <PacingTracker 
+          activities={userActivities.map(activity => ({
+            id: activity.id,
+            deal_id: activity.deal_id,
+            activity_type: activity.activity_type,
+            outcome: undefined, // Will be simulated in the component
+            description: activity.description,
+            completed_at: activity.completed_at || activity.scheduled_at,
+            scheduled_at: activity.scheduled_at
+          }))}
+          deals={userDeals.map(deal => ({
+            id: deal.id,
+            customer_name: deal.customer_name,
+            deal_amount: parseFloat(deal.deal_amount) || 0,
+            status: deal.status,
+            created_at: deal.created_at,
+            close_date: deal.close_date
+          }))}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <DailyGoals 
+              activities={userActivities}
+              deals={userDeals}
+              monthlyGoals={{
+                calls: 220,
+                appointments: 44,
+                deals: 10,
+                revenue: 60000
+              }}
+            />
+          </div>
+          
+          <div className="lg:col-span-2">
+            <RecentActivities deals={userDeals.slice(0, 8) || []} />
+          </div>
+        </div>
+
+        {/* Quick Actions and Debug Info */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <RecentActivities deals={userDeals.slice(0, 8) || []} />
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-            
-            {/* Debug info */}
-            <div className="mb-4 p-3 bg-gray-100 rounded text-sm">
-              <p><strong>Debug Info:</strong></p>
-              <p>Total deals in DB: {deals?.length || 0}</p>
-              <p>User deals: {userDeals.length}</p>
-              <p>MTD/Recent deals: {mtdDeals.length}</p>
-              <p>Closed won: {closedWonDeals.length}</p>
-              <p>User role: {profile?.role}</p>
-              <p>User ID: {session.user.id}</p>
-              <p>Active pipeline: {userDeals.filter(d => !['closed_won', 'closed_lost'].includes(d.status)).length || 0}</p>
-              {profileError && <p>Profile Error: {profileError.message}</p>}
-              {dealsError && <p>Deals Error: {dealsError.message}</p>}
-            </div>
-            
             <div className="space-y-3">
+              <a 
+                href="/analytics" 
+                className="block w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 text-center"
+              >
+                🧠 Performance Analytics
+              </a>
               <a 
                 href="/pipeline" 
                 className="block w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-center"
@@ -135,6 +191,23 @@ export default async function Dashboard() {
               >
                 View Leaderboard
               </a>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">System Status</h3>
+            <div className="p-3 bg-gray-100 rounded text-sm">
+              <p><strong>Data Overview:</strong></p>
+              <p>Total deals in DB: {deals?.length || 0}</p>
+              <p>User deals: {userDeals.length}</p>
+              <p>User activities: {userActivities.length}</p>
+              <p>MTD/Recent deals: {mtdDeals.length}</p>
+              <p>Closed won: {closedWonDeals.length}</p>
+              <p>User role: {profile?.role}</p>
+              <p>Active pipeline: {userDeals.filter(d => !['closed_won', 'closed_lost'].includes(d.status)).length || 0}</p>
+              {profileError && <p className="text-red-600">Profile Error: {profileError.message}</p>}
+              {dealsError && <p className="text-red-600">Deals Error: {dealsError.message}</p>}
+              {activitiesError && <p className="text-red-600">Activities Error: {activitiesError.message}</p>}
             </div>
           </div>
         </div>

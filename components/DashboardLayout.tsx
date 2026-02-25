@@ -23,6 +23,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'Analytics', href: '/analytics', icon: '🧠' },
     { name: 'Leaderboard', href: '/leaderboard', icon: '🏆' },
     { name: 'Pipeline', href: '/pipeline', icon: '📈' },
     { name: 'Imports', href: '/imports', icon: '📁' },
