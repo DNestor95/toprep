@@ -1,0 +1,4 @@
+id,source,filename,imported_at,row_count,notes
+1,seed_generator,generated_eleads_sample_3mo.zip,2026-02-24T22:13:42,444,Synthetic eLeads-style opportunities (3 months)
+2,seed_generator,generated_eleads_sample_3mo.zip,2026-02-24T22:13:42,131,Synthetic sales financials for sold deals
+3,seed_generator,generated_eleads_sample_3mo.zip,2026-02-24T22:13:42,1104,Synthetic activities (calls/texts/emails/visits)
