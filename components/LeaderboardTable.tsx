@@ -3,7 +3,7 @@ interface LeaderboardEntry {
   name: string
   totalRevenue: number
   totalGross: number
-  unitsCount: number
+  prospectsCount: number
   wonCount?: number
   wonRevenue?: number
 }
@@ -38,7 +38,7 @@ export default function LeaderboardTable({ data }: LeaderboardTableProps) {
               Won Revenue
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Total Units
+              Total Prospects
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Won Units
@@ -66,7 +66,7 @@ export default function LeaderboardTable({ data }: LeaderboardTableProps) {
                 {formatCurrency(entry.wonRevenue || 0)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {entry.unitsCount}
+                {entry.prospectsCount}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {entry.wonCount || 0}

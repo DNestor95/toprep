@@ -4,6 +4,8 @@ import { useState } from 'react'
 
 interface LeaderAdvantagesProps {
   isTopPerformer: boolean
+  hasAdvancedAccess: boolean
+  advancedAccessTopN: number
   confidenceScore: number
   rank: number
   performanceIndex: number
@@ -29,6 +31,8 @@ interface SourceOptimization {
 
 export default function LeaderAdvantages({ 
   isTopPerformer,
+  hasAdvancedAccess,
+  advancedAccessTopN,
   confidenceScore,
   rank,
   performanceIndex,
@@ -40,9 +44,6 @@ export default function LeaderAdvantages({
 }: LeaderAdvantagesProps) {
   const [selectedInsight, setSelectedInsight] = useState<'optimizer' | 'timing' | 'decay' | 'forecast'>('optimizer')
 
-  // Only show advanced analytics for top performer or high performers
-  const hasAdvancedAccess = rank === 1 || performanceIndex >= 0.90
-
   if (!hasAdvancedAccess) {
     return (
       <div className="bg-gray-50 p-6 rounded-lg border">
@@ -50,7 +51,7 @@ export default function LeaderAdvantages({
           <div className="text-4xl mb-4">🔒</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Advanced Analytics Locked</h3>
           <p className="text-gray-600">
-            Reach top performance (Rank #1 or 90%+ Performance Index) to unlock advanced insights:
+            Reach the top {advancedAccessTopN} performer{advancedAccessTopN > 1 ? 's' : ''} by rank to unlock advanced insights:
           </p>
           <div className="mt-4 space-y-2 text-sm text-gray-500">
             <div>• Source Mix Optimizer</div>

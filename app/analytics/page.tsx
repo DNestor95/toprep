@@ -8,7 +8,22 @@ import Tooltip from '@/components/Tooltip'
 import { SalesAnalyticsEngine } from '@/lib/analytics-engine'
 import { MockDataGenerator } from '@/lib/mock-data-generator'
 
-export default async function AnalyticsPage() {
+type RankBy = 'won_units' | 'revenue'
+
+function parseRankBy(value?: string | null): RankBy {
+  return value === 'revenue' ? 'revenue' : 'won_units'
+}
+
+function parseTopN(value?: string | null): number {
+  const parsed = Number.parseInt(value ?? '1', 10)
+  return Number.isFinite(parsed) ? Math.min(10, Math.max(1, parsed)) : 1
+}
+
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams?: { topN?: string }
+}) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
 
@@ -23,37 +38,162 @@ export default async function AnalyticsPage() {
     .eq('id', session.user.id)
     .maybeSingle()
 
-  // For now, use mock data to demonstrate the analytics engine
-  // In production, this would fetch real data from the database
-  const mockGenerator = new MockDataGenerator()
-  const allRepData = mockGenerator.generateAllRepData()
-  
-  console.log('Generated mock data for analytics:', allRepData.length, 'reps')
+  const isManager = profile?.role === 'manager' || profile?.role === 'admin'
 
-  // Ensure current user (Devin) gets top performer data for demo
-  // Replace the first rep data with current user as top performer
-  const currentUserRepData = {
-    ...allRepData[0], // Use first rep as template
-    rep_id: session.user.id,
-    units_sold: Math.max(...allRepData.map(r => r.units_sold)) + 2, // Ensure they're #1
-    contacts: Math.max(...allRepData.map(r => r.contacts)) + 5,
-    appointments_set: Math.max(...allRepData.map(r => r.appointments_set)) + 2,
-    appointments_show: Math.max(...allRepData.map(r => r.appointments_show)) + 2
+  const { data: appSettings } = await supabase
+    .from('app_settings')
+    .select('key, value')
+    .in('key', ['leaderboard_rank_by', 'advanced_analytics_top_n'])
+
+  const settingsMap = new Map<string, string>()
+  appSettings?.forEach((setting) => {
+    settingsMap.set(setting.key, setting.value)
+  })
+
+  const rankBy: RankBy = parseRankBy(settingsMap.get('leaderboard_rank_by'))
+
+  let advancedAccessTopN = parseTopN(settingsMap.get('advanced_analytics_top_n'))
+  const requestedTopN = parseTopN(searchParams?.topN)
+
+  if (isManager && searchParams?.topN && requestedTopN !== advancedAccessTopN) {
+    const { error: topNWriteError } = await supabase
+      .from('app_settings')
+      .upsert(
+        {
+          key: 'advanced_analytics_top_n',
+          value: String(requestedTopN),
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'key' }
+      )
+
+    if (!topNWriteError) {
+      advancedAccessTopN = requestedTopN
+    }
   }
 
-  // Replace first rep with current user data
-  allRepData[0] = currentUserRepData
+  const { data: rankingDeals } = await supabase
+    .from('deals')
+    .select('sales_rep_id, deal_amount, status')
+
+  const rankingAccumulator = new Map<string, {
+    wonUnits: number
+    totalRevenue: number
+    wonRevenue: number
+    totalUnits: number
+  }>()
+
+  for (const deal of rankingDeals || []) {
+    if (!deal.sales_rep_id) continue
+
+    const current = rankingAccumulator.get(deal.sales_rep_id) || {
+      wonUnits: 0,
+      totalRevenue: 0,
+      wonRevenue: 0,
+      totalUnits: 0,
+    }
+
+    const amount = parseFloat(deal.deal_amount) || 0
+    current.totalUnits += 1
+    current.totalRevenue += amount
+
+    if (deal.status === 'closed_won') {
+      current.wonUnits += 1
+      current.wonRevenue += amount
+    }
+
+    rankingAccumulator.set(deal.sales_rep_id, current)
+  }
+
+  const rankedReps = Array.from(rankingAccumulator.entries())
+    .map(([repId, metrics]) => ({ repId, ...metrics }))
+    .sort((a, b) => {
+      if (rankBy === 'revenue') {
+        if (b.totalRevenue !== a.totalRevenue) return b.totalRevenue - a.totalRevenue
+        if (b.wonRevenue !== a.wonRevenue) return b.wonRevenue - a.wonRevenue
+        return b.wonUnits - a.wonUnits
+      }
+
+      if (b.wonUnits !== a.wonUnits) return b.wonUnits - a.wonUnits
+      if (b.wonRevenue !== a.wonRevenue) return b.wonRevenue - a.wonRevenue
+      return b.totalUnits - a.totalUnits
+    })
+
+  const rankMap = new Map<string, number>()
+  rankedReps.forEach((rep, index) => {
+    rankMap.set(rep.repId, index + 1)
+  })
+
+  const getTargetUnitsByEmail = (email?: string | null) => {
+    const normalizedEmail = (email || '').toLowerCase()
+
+    if (normalizedEmail.includes('devin')) return 24
+    if (normalizedEmail.includes('manager')) return 15
+    if (normalizedEmail.includes('alex')) return 13
+    if (normalizedEmail.includes('hayden')) return 12
+    if (normalizedEmail.includes('marcus')) return 11
+    if (normalizedEmail.includes('jordan')) return 10
+
+    return 9
+  }
+
+  // Use deterministic mock data so ranking behavior is consistent across users.
+  const mockGenerator = new MockDataGenerator()
+  const generatedData = mockGenerator.generateAllRepData()
+
+  const allRepData = generatedData.map((rep, index) => ({
+    ...rep,
+    rep_id: `mock-rep-${index + 1}`,
+  }))
+
+  const devinTopData = {
+    ...allRepData[0],
+    rep_id: 'rep-devin-top',
+    units_sold: 24,
+    contacts: Math.max(allRepData[0].contacts, 52),
+    appointments_set: Math.max(allRepData[0].appointments_set, 18),
+    appointments_show: Math.max(allRepData[0].appointments_show, 15),
+  }
+
+  allRepData[0] = devinTopData
+
+  const currentUserUnits = getTargetUnitsByEmail(profile?.email || session.user.email)
+  const isCurrentUserDevin = (profile?.email || session.user.email || '').toLowerCase().includes('devin')
+
+  const currentUserRepData = {
+    ...(allRepData[1] || allRepData[0]),
+    rep_id: session.user.id,
+    units_sold: isCurrentUserDevin ? 24 : currentUserUnits,
+    contacts: isCurrentUserDevin ? Math.max((allRepData[1] || allRepData[0]).contacts, 52) : (allRepData[1] || allRepData[0]).contacts,
+    appointments_set: isCurrentUserDevin ? Math.max((allRepData[1] || allRepData[0]).appointments_set, 18) : (allRepData[1] || allRepData[0]).appointments_set,
+    appointments_show: isCurrentUserDevin ? Math.max((allRepData[1] || allRepData[0]).appointments_show, 15) : (allRepData[1] || allRepData[0]).appointments_show,
+  }
+
+  if (isCurrentUserDevin) {
+    allRepData[0] = currentUserRepData
+  } else {
+    allRepData[1] = currentUserRepData
+  }
 
   // Initialize analytics engine
   const analyticsEngine = new SalesAnalyticsEngine()
   const analysisResults = analyticsEngine.analyzePerformance(allRepData)
   
-  // Get current user's analysis (should now be top performer)
+  // Get current user's analysis
   const currentUserRepId = session.user.id
   const userAnalysis = analysisResults.get(currentUserRepId)
+
+  const realRank = rankMap.get(currentUserRepId) || rankedReps.length + 1
+  const managerSelectedIsTopPerformer = realRank === 1
+
+  const hasAdvancedAnalyticsAccess = Boolean(
+    userAnalysis && realRank <= advancedAccessTopN
+  )
   
-  console.log('Current user rank:', userAnalysis?.performanceMetrics.rank)
-  console.log('Is top performer:', userAnalysis?.isTopPerformer)
+  console.log('Current user rank:', realRank)
+  console.log('Rank by:', rankBy)
+  console.log('Advanced access top N:', advancedAccessTopN)
 
   if (!userAnalysis) {
     return (
@@ -133,8 +273,8 @@ export default async function AnalyticsPage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow border">
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold text-purple-600">#{performanceMetrics.rank}</div>
-              <Tooltip content="Your current ranking among all sales reps, sorted by actual units sold this period.">
+              <div className="text-2xl font-bold text-purple-600">#{realRank}</div>
+              <Tooltip content={`Your current ranking among all sales reps, sorted by manager-selected method (${rankBy === 'revenue' ? 'revenue' : 'won units'}).`}>
                 <div className="text-purple-400 hover:text-purple-600 cursor-help">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
@@ -143,7 +283,7 @@ export default async function AnalyticsPage() {
               </Tooltip>
             </div>
             <div className="text-sm text-gray-600">Current Rank</div>
-            <div className="text-xs text-gray-500">Out of {allRepData.length} reps</div>
+            <div className="text-xs text-gray-500">Out of {Math.max(rankedReps.length, 1)} reps</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow border">
             <div className="flex items-center justify-between">
@@ -182,7 +322,7 @@ export default async function AnalyticsPage() {
               sourceWeights={sourceWeights}
               storeBaselines={storeBaselines}
               actualUnits={repData.units_sold}
-              isTopPerformer={isTopPerformer}
+              isTopPerformer={managerSelectedIsTopPerformer}
               leadsBreakdown={repData.leads_by_source}
             />
           </div>
@@ -203,7 +343,7 @@ export default async function AnalyticsPage() {
               catchUpTarget={catchUpTarget}
               activityRecommendations={activityRecommendations}
               coreRates={coreRates}
-              isTopPerformer={isTopPerformer}
+              isTopPerformer={managerSelectedIsTopPerformer}
               performanceIndex={performanceMetrics.performance_index}
             />
           </div>
@@ -211,9 +351,34 @@ export default async function AnalyticsPage() {
 
         {/* Leader Advantages (Advanced Analytics) */}
         <div className="space-y-2">
+          {isManager && (
+            <form action="/analytics" method="get" className="bg-white p-4 rounded-lg shadow border flex items-center gap-3">
+              <label htmlFor="topN" className="text-sm font-medium text-gray-700">
+                Advanced Analytics: top
+              </label>
+              <select
+                id="topN"
+                name="topN"
+                defaultValue={String(advancedAccessTopN)}
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm"
+              >
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </select>
+              <span className="text-sm text-gray-700">reps</span>
+              <button
+                type="submit"
+                className="ml-2 bg-indigo-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-indigo-700"
+              >
+                Apply
+              </button>
+            </form>
+          )}
+
           <div className="flex items-center space-x-2 mb-4">
             <h3 className="text-lg font-medium text-gray-900">Advanced Analytics</h3>
-            <Tooltip content="Exclusive insights for top performers (Rank #1 or 90%+ Performance Index). Includes source optimization, timing analysis, lead decay curves, and advanced forecasting. Earned through performance, not given.">
+            <Tooltip content={`Exclusive insights for top performers. Access is currently limited to top ${advancedAccessTopN} rep${advancedAccessTopN > 1 ? 's' : ''} by manager-selected ranking (${rankBy === 'revenue' ? 'revenue' : 'won units'}).`}>
               <div className="text-gray-400 hover:text-gray-600 cursor-help">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
@@ -222,9 +387,11 @@ export default async function AnalyticsPage() {
             </Tooltip>
           </div>
           <LeaderAdvantages
-            isTopPerformer={isTopPerformer}
+            isTopPerformer={managerSelectedIsTopPerformer}
+            hasAdvancedAccess={hasAdvancedAnalyticsAccess}
+            advancedAccessTopN={advancedAccessTopN}
             confidenceScore={performanceMetrics.confidence_score}
-            rank={performanceMetrics.rank}
+            rank={realRank}
             performanceIndex={performanceMetrics.performance_index}
             defenseTarget={Math.ceil(repData.units_sold * 0.95)}
             currentUnits={repData.units_sold}
@@ -298,11 +465,13 @@ export default async function AnalyticsPage() {
             <div className="mt-3 text-xs text-gray-600 space-y-1">
               <div>Total reps analyzed: {allRepData.length}</div>
               <div>Current user: {profile?.email} ({session.user.id})</div>
-              <div>User rank: #{performanceMetrics.rank}</div>
-              <div>Is top performer: {isTopPerformer ? 'YES' : 'NO'}</div>
+              <div>Rank by: {rankBy === 'revenue' ? 'revenue' : 'won units'}</div>
+              <div>User rank: #{realRank}</div>
+              <div>Is top performer: {managerSelectedIsTopPerformer ? 'YES' : 'NO'}</div>
               <div>Performance index: {(performanceMetrics.performance_index * 100).toFixed(1)}%</div>
               <div>Analysis confidence: {(performanceMetrics.confidence_score * 100).toFixed(1)}%</div>
-              <div>Advanced access: {(performanceMetrics.rank === 1 || performanceMetrics.performance_index >= 0.90) ? 'UNLOCKED' : 'LOCKED'}</div>
+              <div>Advanced access threshold: Top {advancedAccessTopN}</div>
+              <div>Advanced access: {hasAdvancedAnalyticsAccess ? 'UNLOCKED' : 'LOCKED'}</div>
               <div>Units sold: {repData.units_sold}</div>
               <div>Expected units: {expectedUnits.final_expected.toFixed(1)}</div>
               <div>Source weights: {JSON.stringify(sourceWeights, null, 2)}</div>

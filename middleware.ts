@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
+import { getSupabaseEnv } from '@/lib/supabase/env'
 
 export async function middleware(req: NextRequest) {
   let response = NextResponse.next({
@@ -8,9 +9,21 @@ export async function middleware(req: NextRequest) {
     },
   })
 
+  const { url, anonKey, isConfigured } = getSupabaseEnv()
+
+  if (!isConfigured || !url || !anonKey) {
+    if (!req.nextUrl.pathname.startsWith('/login')) {
+      const redirectUrl = req.nextUrl.clone()
+      redirectUrl.pathname = '/login'
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         get(name: string) {
@@ -57,6 +70,12 @@ export async function middleware(req: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession()
+
+  if (session && req.nextUrl.pathname.startsWith('/login')) {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = '/dashboard'
+    return NextResponse.redirect(redirectUrl)
+  }
 
   // If user is not signed in and not on login page, redirect to login
   if (!session && !req.nextUrl.pathname.startsWith('/login')) {

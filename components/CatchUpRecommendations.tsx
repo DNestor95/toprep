@@ -58,6 +58,12 @@ export default function CatchUpRecommendations({
     return { color: 'red', label: 'Significant' }
   }
 
+  const getGapSeverityClass = (color: 'green' | 'yellow' | 'red') => {
+    if (color === 'green') return 'text-xs text-green-500'
+    if (color === 'yellow') return 'text-xs text-yellow-500'
+    return 'text-xs text-red-500'
+  }
+
   const gapSeverity = getGapSeverity(catchUpTarget.gap)
 
   if (isTopPerformer) {
@@ -180,7 +186,7 @@ export default function CatchUpRecommendations({
             </Tooltip>
           </div>
           <div className="text-sm text-gray-600">Top Performer</div>
-          <div className={`text-xs text-${gapSeverity.color}-500`}>Gap: {catchUpTarget.gap}</div>
+          <div className={getGapSeverityClass(gapSeverity.color)}>Gap: {catchUpTarget.gap}</div>
         </div>
       </div>
 

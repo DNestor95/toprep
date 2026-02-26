@@ -3,21 +3,64 @@
 import React, { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { getSupabaseEnv } from '@/lib/supabase/env'
 
 export default function Login() {
+  const { isConfigured } = getSupabaseEnv()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const supabase = createClient()
+  const supabase = isConfigured ? createClient() : null
   const router = useRouter()
 
-  // Debug: Check if Supabase is configured
   React.useEffect(() => {
-    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('Supabase Key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-    console.log('Supabase client:', supabase)
-  }, [])
+    if (!supabase) return
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.replace('/dashboard')
+      }
+    }
+
+    checkSession()
+  }, [router, supabase])
+
+  const getFriendlyAuthError = (errorMessage: string) => {
+    const lower = errorMessage.toLowerCase()
+
+    if (lower.includes('invalid login credentials')) {
+      return 'Invalid email or password. Please try again.'
+    }
+
+    if (lower.includes('email not confirmed')) {
+      return 'Your email is not confirmed yet. Please check your inbox for the confirmation link.'
+    }
+
+    if (lower.includes('too many requests')) {
+      return 'Too many login attempts. Please wait a minute and try again.'
+    }
+
+    return errorMessage
+  }
+
+  if (!isConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-lg shadow">
+          <h1 className="text-2xl font-bold text-gray-900">Supabase Setup Required</h1>
+          <p className="text-sm text-gray-600">
+            Create a <strong>.env.local</strong> file from <strong>.env.local.example</strong> and set your Supabase values.
+          </p>
+          <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3 space-y-1">
+            <p>NEXT_PUBLIC_SUPABASE_URL=...</p>
+            <p>NEXT_PUBLIC_SUPABASE_ANON_KEY=...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,20 +68,25 @@ export default function Login() {
     setMessage('')
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      if (!supabase) return
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
-        console.error('Login error:', error)
-        setMessage(`Login error: ${error.message}`)
+        setMessage(getFriendlyAuthError(error.message))
       } else {
         setMessage('Login successful! Redirecting...')
-        router.push('/dashboard')
+        if (data.session) {
+          window.location.assign('/dashboard')
+          return
+        }
+
+        setMessage('Login succeeded but no session was returned. Please try again.')
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
       setMessage('Unexpected error occurred. Please try again.')
     }
     setLoading(false)
@@ -50,22 +98,23 @@ export default function Login() {
     setMessage('')
 
     try {
+      if (!supabase) return
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
       })
 
       if (error) {
-        console.error('Signup error:', error)
-        setMessage(`Signup error: ${error.message}`)
+        setMessage(getFriendlyAuthError(error.message))
       } else if (data.user && !data.session) {
         setMessage('Please check your email to confirm your account.')
       } else if (data.session) {
         setMessage('Account created successfully! Redirecting...')
-        router.push('/dashboard')
+        window.location.assign('/dashboard')
+        return
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
       setMessage('Unexpected error occurred. Please try again.')
     }
     setLoading(false)

@@ -67,6 +67,12 @@ export default function PerformanceAnalytics({
     return { level: 'Low', color: 'red' }
   }
 
+  const getConfidenceBadgeClass = (color: 'green' | 'yellow' | 'red') => {
+    if (color === 'green') return 'text-sm px-2 py-1 rounded bg-green-100 text-green-700'
+    if (color === 'yellow') return 'text-sm px-2 py-1 rounded bg-yellow-100 text-yellow-700'
+    return 'text-sm px-2 py-1 rounded bg-red-100 text-red-700'
+  }
+
   const confidence = getConfidenceLevel(performanceMetrics.confidence_score)
 
   const performanceVariance = actualUnits - expectedUnits.final_expected
@@ -78,7 +84,7 @@ export default function PerformanceAnalytics({
         <div>
           <h3 className="text-lg font-medium text-gray-900">Performance Analytics</h3>
           <div className="flex items-center space-x-4 mt-1">
-            <span className={`text-sm px-2 py-1 rounded bg-${confidence.color}-100 text-${confidence.color}-700`}>
+            <span className={getConfidenceBadgeClass(confidence.color)}>
               {confidence.level} Confidence
             </span>
             <span className="text-sm text-gray-500">Rank #{performanceMetrics.rank}</span>
