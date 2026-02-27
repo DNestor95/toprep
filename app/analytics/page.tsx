@@ -6,6 +6,7 @@ import PerformanceAnalytics from '@/components/PerformanceAnalytics'
 import LeaderAdvantages from '@/components/LeaderAdvantages'
 import Tooltip from '@/components/Tooltip'
 import { SalesAnalyticsEngine } from '@/lib/analytics-engine'
+import type { ForecastViewModel } from '@/lib/domain/analytics/forecastViewModel'
 import { MockDataGenerator } from '@/lib/mock-data-generator'
 
 type RankBy = 'won_units' | 'revenue'
@@ -221,6 +222,26 @@ export default async function AnalyticsPage({
     isTopPerformer
   } = userAnalysis
 
+  const forecast: ForecastViewModel = {
+    expectedUnits,
+    coreRates,
+    performanceMetrics,
+    sourceWeights,
+    storeBaselines,
+    actualUnits: repData.units_sold,
+    leadsBreakdown: repData.leads_by_source,
+    catchUpTarget,
+    activityRecommendations,
+    isTopPerformer: managerSelectedIsTopPerformer,
+    hasAdvancedAccess: hasAdvancedAnalyticsAccess,
+    advancedAccessTopN,
+    rank: realRank,
+    performanceIndex: performanceMetrics.performance_index,
+    confidenceScore: performanceMetrics.confidence_score,
+    defenseTarget: Math.ceil(repData.units_sold * 0.95),
+    currentUnits: repData.units_sold,
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -316,14 +337,7 @@ export default async function AnalyticsPage({
               </Tooltip>
             </div>
             <PerformanceAnalytics
-              expectedUnits={expectedUnits}
-              coreRates={coreRates}
-              performanceMetrics={performanceMetrics}
-              sourceWeights={sourceWeights}
-              storeBaselines={storeBaselines}
-              actualUnits={repData.units_sold}
-              isTopPerformer={managerSelectedIsTopPerformer}
-              leadsBreakdown={repData.leads_by_source}
+              forecast={forecast}
             />
           </div>
 
@@ -340,11 +354,7 @@ export default async function AnalyticsPage({
               </Tooltip>
             </div>
             <CatchUpRecommendations
-              catchUpTarget={catchUpTarget}
-              activityRecommendations={activityRecommendations}
-              coreRates={coreRates}
-              isTopPerformer={managerSelectedIsTopPerformer}
-              performanceIndex={performanceMetrics.performance_index}
+              forecast={forecast}
             />
           </div>
         </div>
@@ -387,17 +397,7 @@ export default async function AnalyticsPage({
             </Tooltip>
           </div>
           <LeaderAdvantages
-            isTopPerformer={managerSelectedIsTopPerformer}
-            hasAdvancedAccess={hasAdvancedAnalyticsAccess}
-            advancedAccessTopN={advancedAccessTopN}
-            confidenceScore={performanceMetrics.confidence_score}
-            rank={realRank}
-            performanceIndex={performanceMetrics.performance_index}
-            defenseTarget={Math.ceil(repData.units_sold * 0.95)}
-            currentUnits={repData.units_sold}
-            leadsBreakdown={repData.leads_by_source}
-            sourceWeights={sourceWeights}
-            coreRates={coreRates}
+            forecast={forecast}
           />
         </div>
 

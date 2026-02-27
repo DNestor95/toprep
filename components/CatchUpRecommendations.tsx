@@ -1,47 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import type { ForecastViewModel } from '@/lib/domain/analytics/forecastViewModel'
 import Tooltip from './Tooltip'
 
-interface CatchUpTarget {
-  current_units: number
-  top_performer_units: number
-  gap: number
-  gap_close_rate: number
-  target_units: number
-  delta_units: number
-}
-
-interface ActivityRecommendations {
-  additional_leads_needed: Record<string, number>
-  required_contact_rate: number
-  additional_attempts_needed: number
-  is_on_track: boolean
-}
-
-interface CoreRates {
-  contact_rate: number
-  appointment_set_rate: number
-  show_rate: number
-  close_from_show: number
-  close_from_contact: number
-}
-
 interface CatchUpRecommendationsProps {
-  catchUpTarget: CatchUpTarget
-  activityRecommendations: ActivityRecommendations
-  coreRates: CoreRates
-  isTopPerformer: boolean
-  performanceIndex: number
+  forecast: ForecastViewModel
 }
 
 export default function CatchUpRecommendations({
-  catchUpTarget,
-  activityRecommendations,
-  coreRates,
-  isTopPerformer,
-  performanceIndex
+  forecast,
 }: CatchUpRecommendationsProps) {
+  const {
+    catchUpTarget,
+    activityRecommendations,
+    coreRates,
+    isTopPerformer,
+    performanceIndex,
+  } = forecast
+
   const [selectedStrategy, setSelectedStrategy] = useState<'leads' | 'contact' | 'combined'>('combined')
 
   const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`

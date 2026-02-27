@@ -1,24 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import type { ForecastViewModel } from '@/lib/domain/analytics/forecastViewModel'
 
 interface LeaderAdvantagesProps {
-  isTopPerformer: boolean
-  hasAdvancedAccess: boolean
-  advancedAccessTopN: number
-  confidenceScore: number
-  rank: number
-  performanceIndex: number
-  defenseTarget: number
-  currentUnits: number
-  leadsBreakdown: Record<string, number>
-  sourceWeights: Record<string, number>
-  coreRates: {
-    contact_rate: number
-    appointment_set_rate: number
-    show_rate: number
-    close_from_show: number
-  }
+  forecast: ForecastViewModel
 }
 
 interface SourceOptimization {
@@ -29,19 +15,21 @@ interface SourceOptimization {
   optimization_score: number
 }
 
-export default function LeaderAdvantages({ 
-  isTopPerformer,
-  hasAdvancedAccess,
-  advancedAccessTopN,
-  confidenceScore,
-  rank,
-  performanceIndex,
-  defenseTarget,
-  currentUnits,
-  leadsBreakdown,
-  sourceWeights,
-  coreRates 
-}: LeaderAdvantagesProps) {
+export default function LeaderAdvantages({ forecast }: LeaderAdvantagesProps) {
+  const {
+    isTopPerformer,
+    hasAdvancedAccess,
+    advancedAccessTopN,
+    confidenceScore,
+    rank,
+    performanceIndex,
+    defenseTarget,
+    currentUnits,
+    leadsBreakdown,
+    sourceWeights,
+    coreRates,
+  } = forecast
+
   const [selectedInsight, setSelectedInsight] = useState<'optimizer' | 'timing' | 'decay' | 'forecast'>('optimizer')
 
   if (!hasAdvancedAccess) {

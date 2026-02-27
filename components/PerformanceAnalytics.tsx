@@ -1,55 +1,27 @@
 'use client'
 
 import { useState } from 'react'
+import type { ForecastViewModel } from '@/lib/domain/analytics/forecastViewModel'
 import Tooltip from './Tooltip'
 
-interface ExpectedUnits {
-  base_expected: number
-  contact_multiplier: number
-  appointment_multiplier: number
-  final_expected: number
-}
-
-interface CoreRates {
-  contact_rate: number
-  appointment_set_rate: number
-  show_rate: number
-  close_from_show: number
-  close_from_contact: number
-}
-
-interface PerformanceMetrics {
-  performance_index: number
-  balanced_score: number
-  confidence_score: number
-  rank: number
-}
-
-interface SourceWeights {
-  [source: string]: number
-}
-
 interface PerformanceAnalyticsProps {
-  expectedUnits: ExpectedUnits
-  coreRates: CoreRates
-  performanceMetrics: PerformanceMetrics
-  sourceWeights: SourceWeights
-  storeBaselines: { contact_rate: number; appointment_set_rate: number }
-  actualUnits: number
-  isTopPerformer: boolean
-  leadsBreakdown: Record<string, number>
+  forecast: ForecastViewModel
 }
 
 export default function PerformanceAnalytics({
-  expectedUnits,
-  coreRates,
-  performanceMetrics,
-  sourceWeights,
-  storeBaselines,
-  actualUnits,
-  isTopPerformer,
-  leadsBreakdown
+  forecast,
 }: PerformanceAnalyticsProps) {
+  const {
+    expectedUnits,
+    coreRates,
+    performanceMetrics,
+    sourceWeights,
+    storeBaselines,
+    actualUnits,
+    isTopPerformer,
+    leadsBreakdown,
+  } = forecast
+
   const [selectedTab, setSelectedTab] = useState<'overview' | 'breakdown' | 'comparison'>('overview')
 
   const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`
