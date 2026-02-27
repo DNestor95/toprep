@@ -1,70 +1,94 @@
-# toprep
-# Sales Dashboard App (eLeads)
+# TOP REP
 
-A multi-user sales dashboard for a dealership. Tracks:
-- Leaderboards (Units + Gross)
-- MTD KPI dashboard
-- Deal pipeline (stages)
-- Activity tracking
-- CSV import / audit trail (optional phase)
+> Real-Time Quota Probability Engine for Dealership Sales Teams
 
-Built with **Next.js (App Router)** + **Supabase (Postgres/Auth/RLS)**.
+------------------------------------------------------------------------
 
----
+## Version
 
-## Features (MVP)
-- ✅ Multi-user authentication (Supabase Auth)
-- ✅ Role-based access:
-  - `sales_rep`: can only see their own deals/activities/financials
-  - `manager` / `admin`: can see all data
-- ✅ Leaderboard (MTD by default)
-- ✅ Database schema designed for eLeads exports + future API integration
+**Current Version:** v0.2.0 (Forecast Architecture Refactor)
 
----
+Versioning format: - v0.x.x → Architecture + internal milestone builds -
+v1.0.0 → First production-ready dealership deployment - v2.0.0 →
+Advanced probabilistic + ML forecasting
 
-## Tech Stack
-- Next.js (TypeScript, App Router)
-- Tailwind CSS
-- Supabase (Postgres + Auth + RLS)
-- Recharts (charts)
+------------------------------------------------------------------------
 
----
+## Product Identity
 
-## Project Structure (recommended)
-/app
-/login
-/dashboard
-/leaderboard
-/pipeline
-/imports
-/api
-/components
-/lib
-/supabase
-client.ts
-server.ts
-/supabase
-schema.sql
-seed.sql
-middleware.ts
+TOP REP is not a CRM. TOP REP is not a dashboard.
 
+TOP REP is a **real-time quota probability engine**.
 
----
+Core question:
 
-## Prerequisites
-- Node.js 18+ (or 20+)
-- A Supabase project
+> What is the probability this rep hits quota this month --- and what
+> actions increase it?
 
----
+Everything in this repository must serve that question.
 
-## Setup
+------------------------------------------------------------------------
 
-### 1) Create the Next.js app
-```bash
-npx create-next-app@latest sales-dashboard --ts --app
-cd sales-dashboard
+# Progress Tracker
 
-npm i @supabase/supabase-js @supabase/ssr recharts
+## Phase 0 --- Foundation (Architecture)
 
-NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+-   [x] Next.js + Supabase setup
+-   [x] Leaderboard + pipeline UI
+-   [x] Analytics engine (initial)
+-   [x] Domain layer refactor (`/lib/domain`)
+-   [ ] Event-first pipeline fully implemented
+-   [ ] rep_month_stats incremental updates
+-   [ ] rep_month_forecast caching
+-   [ ] Real-time forecast updates
+
+------------------------------------------------------------------------
+
+## Phase 1 --- Probability Engine
+
+-   [ ] Binomial quota probability model
+-   [ ] Smoothed rate estimators
+-   [ ] Next-best-action contract
+-   [ ] Forecast unit tests
+-   [ ] Rebuild stats from events script
+
+------------------------------------------------------------------------
+
+## Phase 2 --- Product Hardening
+
+-   [ ] Multi-tenant RLS enforcement
+-   [ ] Environment separation (dev/staging/prod)
+-   [ ] Full event validation (Zod)
+-   [ ] Forecast performance optimization
+-   [ ] Production logging
+
+------------------------------------------------------------------------
+
+## Phase 3 --- Advanced Modeling
+
+-   [ ] Bayesian rate updating
+-   [ ] Time-to-close modeling
+-   [ ] Volatility scoring
+-   [ ] Monte Carlo simulation
+-   [ ] Lead distribution optimization
+
+------------------------------------------------------------------------
+
+# Architecture Overview
+
+Golden pipeline:
+
+Event → Stats → Forecast → UI
+
+See `ARCHITECTURE.md` for details.
+
+------------------------------------------------------------------------
+
+# Non-Negotiables
+
+-   No business logic in React components
+-   No DB calls in domain forecast logic
+-   Events are append-only
+-   Derived state is rebuildable
+-   Forecast math must be testable
+-   All features must map to quota probability
