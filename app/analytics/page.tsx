@@ -8,6 +8,7 @@ import Tooltip from '@/components/Tooltip'
 import { SalesAnalyticsEngine } from '@/lib/analytics-engine'
 import type { ForecastViewModel } from '@/lib/domain/analytics/forecastViewModel'
 import { MockDataGenerator } from '@/lib/mock-data-generator'
+import { recomputeRepMonthForecast } from '@/lib/server/recomputeRepMonthForecast'
 
 type RankBy = 'won_units' | 'revenue'
 
@@ -161,6 +162,11 @@ export default async function AnalyticsPage({
 
   const currentUserUnits = getTargetUnitsByEmail(profile?.email || session.user.email)
   const isCurrentUserDevin = (profile?.email || session.user.email || '').toLowerCase().includes('devin')
+
+  await recomputeRepMonthForecast(supabase, {
+    repId: session.user.id,
+    quotaUnits: currentUserUnits,
+  })
 
   const currentUserRepData = {
     ...(allRepData[1] || allRepData[0]),

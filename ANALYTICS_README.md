@@ -81,7 +81,20 @@ target = max(target, CurrentUnits + 1) // Minimum improvement
 ### Enhanced Tables
 - **`activities`**: Added `outcome` field for call results
 - **`deals`**: Added `lead_source` for source tracking
+- **`rep_month_stats`**: Cached per-rep monthly funnel stats
+- **`rep_month_forecast`**: Cached monthly projection + quota hit probability + next best action
 - **Analytics Views**: Pre-calculated aggregations for performance
+
+### Forecast-First Additions
+- Run `supabase/forecast_schema.sql` to create forecast cache tables and RLS policies.
+- Pure forecast domain modules live in `/lib/domain/forecast`:
+   - `computeProjectedUnits.ts`
+   - `computeQuotaProbability.ts`
+   - `computeNextBestAction.ts`
+- Server recompute path: `/lib/server/recomputeRepMonthForecast.ts`
+   - Recomputes current rep/month stats from `deals` + `activities`
+   - Upserts `rep_month_stats` and `rep_month_forecast`
+   - Triggered from `/app/analytics/page.tsx` during analytics page load
 
 ### Key Views
 - **`analytics_rep_performance`**: Monthly aggregated metrics
