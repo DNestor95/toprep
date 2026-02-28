@@ -155,7 +155,7 @@ export default async function AnalyticsPage({
     units_sold: 24,
     contacts: Math.max(allRepData[0].contacts, 52),
     appointments_set: Math.max(allRepData[0].appointments_set, 18),
-    appointments_show: Math.max(allRepData[0].appointments_show, 15),
+    appointments_show: Math.max(allRepData[0].appointments_show, 24),
   }
 
   allRepData[0] = devinTopData
@@ -168,13 +168,19 @@ export default async function AnalyticsPage({
     quotaUnits: currentUserUnits,
   })
 
+  const currentUserBaseData = allRepData[1] || allRepData[0]
+  const currentUserUnitsSold = isCurrentUserDevin ? 24 : currentUserUnits
+  const currentUserAppointmentsShow = Math.max(currentUserBaseData.appointments_show, currentUserUnitsSold)
+  const currentUserAppointmentsSet = Math.max(currentUserBaseData.appointments_set, currentUserAppointmentsShow)
+  const currentUserContacts = Math.max(currentUserBaseData.contacts, currentUserAppointmentsSet)
+
   const currentUserRepData = {
-    ...(allRepData[1] || allRepData[0]),
+    ...currentUserBaseData,
     rep_id: session.user.id,
-    units_sold: isCurrentUserDevin ? 24 : currentUserUnits,
-    contacts: isCurrentUserDevin ? Math.max((allRepData[1] || allRepData[0]).contacts, 52) : (allRepData[1] || allRepData[0]).contacts,
-    appointments_set: isCurrentUserDevin ? Math.max((allRepData[1] || allRepData[0]).appointments_set, 18) : (allRepData[1] || allRepData[0]).appointments_set,
-    appointments_show: isCurrentUserDevin ? Math.max((allRepData[1] || allRepData[0]).appointments_show, 15) : (allRepData[1] || allRepData[0]).appointments_show,
+    units_sold: currentUserUnitsSold,
+    contacts: currentUserContacts,
+    appointments_set: currentUserAppointmentsSet,
+    appointments_show: currentUserAppointmentsShow,
   }
 
   if (isCurrentUserDevin) {
@@ -191,7 +197,8 @@ export default async function AnalyticsPage({
   const currentUserRepId = session.user.id
   const userAnalysis = analysisResults.get(currentUserRepId)
 
-  const realRank = rankMap.get(currentUserRepId) || rankedReps.length + 1
+  const analyticsRank = userAnalysis?.performanceMetrics.rank
+  const realRank = analyticsRank ?? rankMap.get(currentUserRepId) ?? rankedReps.length + 1
   const managerSelectedIsTopPerformer = realRank === 1
 
   const hasAdvancedAnalyticsAccess = Boolean(

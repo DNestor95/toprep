@@ -28,6 +28,7 @@ export default function LeaderAdvantages({ forecast }: LeaderAdvantagesProps) {
     leadsBreakdown,
     sourceWeights,
     coreRates,
+    expectedUnits,
   } = forecast
 
   const [selectedInsight, setSelectedInsight] = useState<'optimizer' | 'timing' | 'decay' | 'forecast'>('optimizer')
@@ -95,6 +96,12 @@ export default function LeaderAdvantages({ forecast }: LeaderAdvantagesProps) {
   ]
 
   const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`
+
+  const baseProjection = Math.max(currentUnits, Math.round(expectedUnits.final_expected))
+  const projectionSpread = Math.max(1, Math.ceil(baseProjection * Math.max(0.08, (1 - confidenceScore) * 0.25)))
+  const conservativeProjection = Math.max(currentUnits, baseProjection - projectionSpread)
+  const mostLikelyProjection = Math.max(conservativeProjection, baseProjection)
+  const optimisticProjection = Math.max(mostLikelyProjection, baseProjection + projectionSpread)
 
   return (
     <div className="bg-gradient-to-br from-yellow-50 to-amber-50 p-6 rounded-lg border border-yellow-200">
@@ -265,19 +272,19 @@ export default function LeaderAdvantages({ forecast }: LeaderAdvantagesProps) {
             <h4 className="font-medium text-amber-900 mb-3">Advanced Forecasting</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-3 bg-amber-50 rounded text-center">
-                <div className="text-2xl font-bold text-amber-700">{currentUnits + Math.floor(Math.random() * 3)}</div>
+                <div className="text-2xl font-bold text-amber-700">{conservativeProjection}</div>
                 <div className="text-sm text-amber-600">Conservative</div>
-                <div className="text-xs text-amber-500">±{Math.ceil(currentUnits * 0.1)} units</div>
+                <div className="text-xs text-amber-500">-{projectionSpread} units</div>
               </div>
               <div className="p-3 bg-amber-100 rounded text-center border-2 border-amber-300">
-                <div className="text-2xl font-bold text-amber-800">{currentUnits + Math.floor(Math.random() * 5)}</div>
+                <div className="text-2xl font-bold text-amber-800">{mostLikelyProjection}</div>
                 <div className="text-sm text-amber-700">Most Likely</div>
-                <div className="text-xs text-amber-600">±{Math.ceil(currentUnits * 0.15)} units</div>
+                <div className="text-xs text-amber-600">Baseline forecast</div>
               </div>
               <div className="p-3 bg-amber-50 rounded text-center">
-                <div className="text-2xl font-bold text-amber-700">{currentUnits + Math.floor(Math.random() * 8)}</div>
+                <div className="text-2xl font-bold text-amber-700">{optimisticProjection}</div>
                 <div className="text-sm text-amber-600">Optimistic</div>
-                <div className="text-xs text-amber-500">±{Math.ceil(currentUnits * 0.25)} units</div>
+                <div className="text-xs text-amber-500">+{projectionSpread} units</div>
               </div>
             </div>
           </div>
