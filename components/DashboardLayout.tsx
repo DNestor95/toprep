@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -12,9 +12,31 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
+
+  useEffect(() => {
+    const loadRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        setUserRole(null)
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      setUserRole(profile?.role ?? null)
+    }
+
+    void loadRole()
+  }, [supabase])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -28,6 +50,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Pipeline', href: '/pipeline', icon: '📈' },
     { name: 'Imports', href: '/imports', icon: '📁' },
   ]
+
+  if (userRole === 'manager' || userRole === 'admin') {
+    navigation.splice(2, 0, { name: 'Personal Analytics', href: '/analytics/personal', icon: '👤' })
+  }
 
   return (
     <div className="h-screen flex">

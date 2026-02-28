@@ -24,7 +24,7 @@ function parseTopN(value?: string | null): number {
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams?: { topN?: string }
+  searchParams?: { topN?: string; mode?: string }
 }) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -41,6 +41,11 @@ export default async function AnalyticsPage({
     .maybeSingle()
 
   const isManager = profile?.role === 'manager' || profile?.role === 'admin'
+  const isPersonalMode = searchParams?.mode === 'personal'
+
+  if (isManager && !isPersonalMode) {
+    redirect('/dashboard')
+  }
 
   const { data: appSettings } = await supabase
     .from('app_settings')
@@ -262,11 +267,13 @@ export default async function AnalyticsPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Performance Analytics
+              {isManager ? 'Personal Sales Analytics' : 'Performance Analytics'}
               {isTopPerformer && <span className="ml-2 text-yellow-500">👑</span>}
             </h1>
             <p className="text-gray-600">
-              Data-driven insights and catch-up recommendations
+              {isManager
+                ? 'Your individual selling analytics. Team/store analytics are available on the manager dashboard.'
+                : 'Data-driven insights and catch-up recommendations'}
             </p>
           </div>
           <div className="text-right">
@@ -376,6 +383,7 @@ export default async function AnalyticsPage({
         <div className="space-y-2">
           {isManager && (
             <form action="/analytics" method="get" className="bg-white p-4 rounded-lg shadow border flex items-center gap-3">
+              <input type="hidden" name="mode" value="personal" />
               <label htmlFor="topN" className="text-sm font-medium text-gray-700">
                 Advanced Analytics: top
               </label>

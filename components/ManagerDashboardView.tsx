@@ -145,6 +145,14 @@ export default function ManagerDashboardView({
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Manager Command Center</h1>
         <p className="text-gray-600">Welcome back, {managerName}. Decision + intervention view for today.</p>
+        <div className="mt-2">
+          <a
+            href="/analytics/personal"
+            className="inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
+          >
+            View your personal sales analytics →
+          </a>
+        </div>
       </div>
 
       <form action="/dashboard" method="get" className="bg-white p-4 rounded-lg shadow border flex flex-wrap items-end gap-3">
